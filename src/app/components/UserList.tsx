@@ -80,18 +80,15 @@ const UserList = () => {
         </table>
       </div>
       {showPopup && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-            <div ref={popupRef} className="relative bg-white p-8 mt-5 rounded shadow-md" style={{ width: 500, height: 250 }}>
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-white rounded shadow-md"></div>
-              <div className="relative flex flex-col justify-between h-full">
-                <div className="bg-red-500 px-4 py-6 mt-7 text-white mb-4">{error}</div>
-                {/* <div className="flex justify-end">
-                  <button className="bg-red-500 text-white px-4 py-2 rounded hover:cursor-pointer" onClick={() => setShowPopup(false)}>Close</button>
-                </div> */}
-              </div>
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div ref={popupRef} className="relative bg-white rounded shadow-md" style={{ width: 450, height: 70 }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-white rounded shadow-md"></div>
+            <div className="relative flex flex-col justify-between h-full">
+              <div className="bg-red-500 px-4 py-6 text-white mb-4">{error}</div>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 };
