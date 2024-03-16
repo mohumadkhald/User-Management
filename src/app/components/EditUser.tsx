@@ -1,13 +1,19 @@
+/* eslint-disable react/no-direct-mutation-state */
 "use client";
 
 import { Dialog, Transition } from "@headlessui/react";
-import React, { Fragment, useState } from "react";
-import UserList from "./UserList";
+import React, { Fragment, useEffect, useRef, useState } from "react";
+import UserInterface from "../interface/user";
 
-const AddUser = () => {
+export const EditUser = ({ userID, setResUser }: { userID: any, setResUser: any }) => {
   const USER_API = "http://localhost:8080/api/v1/users";
-  let [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState({
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [showPopup, setShowPopup] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null); // Ref to the pop-up div
+
+  const [user, setUser] = useState<UserInterface>({
+    id: userID,
     fname: "",
     lname: "",
     email: "",
@@ -15,32 +21,33 @@ const AddUser = () => {
     address: "",
     password: "",
   });
-
-  const [resUser, setResUser] = useState({
-    fname: "",
-    lname: "",
-    email: "",
-    phone: "",
-    address: "",
-    password: "",
-  });
-
-  const [errors, setErrors] = useState({
-    fname: "",
-    lname: "",
-    email: "",
-    phone: "",
-    address: "",
-    password: "",
-  });
-
-  const [errorMessage, setErrorMessage] = useState<{ [key: string]: string }>({});
+  const [errors, setErrors] = useState<Partial<UserInterface>>({});
+  const [errorMessage, setErrorMessage] = useState<{ [key: string]: string }>(
+    {}
+  );
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (userID != null) {
+      fetch(`${USER_API}/${userID}`)
+        .then((response) => response.json())
+        .then((data) => {
+          // Assuming data is an array and you want the first element
+          const userData = data.data[0];
+          if (!userData.hasOwnProperty("password")) {
+            userData.password = ""; // Set a default value for password
+          }
+          setUser(userData);
+          setIsOpen(true);
+        //   console.log(userData);
+        });
+      // .catch((error) => console.error("Error fetching user:", error));
+    }
+  }, [userID]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setUser({ ...user, [name]: value });
-    // Validate on change
     validate(name, value);
   };
 
@@ -51,7 +58,6 @@ const AddUser = () => {
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name } = e.target;
-    // Clear errors when focusing on the input field
     setErrors({ ...errors, [name]: "" });
   };
 
@@ -87,9 +93,9 @@ const AddUser = () => {
     setErrors({ ...errors, [name]: error });
   };
 
-  // Check if there are any errors
   let hasErrors = Object.values(errors).some((error) => error !== "");
-  const handleSubmit = async (
+
+  const updateUser = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
@@ -105,7 +111,9 @@ const AddUser = () => {
       user.password.trim() === "" ||
       hasErrors
     ) {
-      const msg = {"err":"Please fill in all fields correctly before submitting."};
+      const msg = {
+        err: "Please fill in all fields correctly before submitting.",
+      };
       setErrorMessage(msg);
       return; // Prevent form submission
     }
@@ -123,8 +131,8 @@ const AddUser = () => {
     };
 
     try {
-      const response = await fetch(USER_API, {
-        method: "POST",
+      const response = await fetch(`${USER_API}/${userID}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -135,10 +143,10 @@ const AddUser = () => {
       if (!response.ok) {
         // Get the error message from the response body if available
         let errorMessages = {};
-          const errorData = await response.json();
-          if (errorData.errors && Object.keys(errorData.errors).length > 0) {
-            errorMessages = errorData.errors; // Assign the error object directly
-          }
+        const errorData = await response.json();
+        if (errorData.errors && Object.keys(errorData.errors).length > 0) {
+          errorMessages = errorData.errors; // Assign the error object directly
+        }
 
         // Throw an error with HTTP status and response message
         setErrorMessage(errorMessages);
@@ -147,13 +155,30 @@ const AddUser = () => {
       const responseData = await response.json();
       setResUser(responseData);
       setIsOpen(false);
-      setSuccessMessage("User added successfully.");
+      setSuccessMessage("User updated successfully.");
+      setShowPopup(true);
       // Hide success message after 2 seconds
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 2000);
+      //   setTimeout(() => {
+      //     setSuccessMessage("");
+      //   }, 2000);
     } catch (error) {
       // setErrorMessage({"err":"Error adding user. Please try again later."});
+    }
+  };
+
+  useEffect(() => {
+    // Add event listener when the component mounts
+    window.addEventListener("click", handleClickOutside);
+    // Remove event listener when the component unmounts
+    return () => {
+      window.removeEventListener("click", handleClickOutside);
+    };
+  }, []);
+
+  // Function to handle clicks outside the pop-up
+  const handleClickOutside = (event: MouseEvent) => {
+    if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+      setShowPopup(false); // Close the pop-up if the click occurs outside of it
     }
   };
 
@@ -164,29 +189,25 @@ const AddUser = () => {
   function openModal() {
     setIsOpen(true);
   }
-
   return (
     <>
-      <div className="container mx-auto my-8">
-        {successMessage && (
-          <div className="flex h-2 justify-center">
-            <p
-              style={{ width: 500, height: 50 }}
-              className="bg-green-500 py-2 text-white font-semibold text-2XL text-center mt-2"
-            >
-              {successMessage}
-            </p>
-          </div>
-        )}
-        <div className="h-12 flex justify-end">
-          <button
-            onClick={openModal}
-            className="rounded bg-slate-600 text-white px-6 py-2 font-semibold"
+      {showPopup && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-20">
+          <div
+            ref={popupRef}
+            className="relative bg-white rounded shadow-md"
+            style={{ width: 450, height: 70, marginTop:"-34.5%" }}
           >
-            Add User
-          </button>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-white rounded shadow-md"></div>
+            <div className="relative flex flex-col justify-between h-full">
+              <div className=" bg-green-500 px-4 py-6 text-white mb-4">
+                {successMessage}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog as="div" className="relative z-10" onClose={closeModal}>
           <Transition.Child
@@ -217,7 +238,7 @@ const AddUser = () => {
                     as="h3"
                     className="text-2xl font-medium leading-6 text-gray-900"
                   >
-                    Add User
+                    Edit User
                   </Dialog.Title>
                   <div className="flex max-w-md max-auto">
                     <div className="py-2 px-2">
@@ -379,10 +400,10 @@ const AddUser = () => {
                       className={`w-full inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                         hasErrors ? "cursor-not-allowed opacity-50" : ""
                       }`}
-                      onClick={(e) => handleSubmit(e)}
+                      onClick={(e) => updateUser(e)}
                       disabled={hasErrors}
                     >
-                      Create
+                      Update
                     </button>
                   </div>
                   {errorMessage && (
@@ -400,9 +421,6 @@ const AddUser = () => {
           </div>
         </Dialog>
       </Transition>
-      <UserList user={resUser}></UserList>
     </>
   );
 };
-
-export default AddUser;

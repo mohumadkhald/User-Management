@@ -5,6 +5,7 @@ interface UserInterface {
     email: string;
     phone: string;
     address: string;
+    password: string;
     // other properties
   }
   export default UserInterface
